@@ -7,41 +7,27 @@ import numba
 from numba import njit
 
 @njit()
-def calc_fpt( x , dt , x_start , x_final , time_step = 0 , recrossings = 0 , fpt = 0. , nr_events_with_recrossings = 0 ):
+def calc_fpt( x , xstart_signs , xfinal_signs , x_start , x_final , dt , time_step = 0 , recrossings = 0 , fpt = 0. , sign_x_start_before = 0 , sign_x_final_before = 0 , x_past = 0. ):
     """
     Compute first passage times between configurations x_start and x_final in time series data  x with time step dt.
     """
-    x0 = x[0]
-    if x0 != x_start :
-        sign_x_start_before = int(( x0 - x_start )/abs( x0 - x_start ))
-    else:
-        sign_x_start_before = int(0)
-    if x0 != x_final :
-        sign_x_final_before = int(( x0 - x_final )/abs( x0 - x_final ))
-    else:
-        sign_x_final_before = int(0)
     traj_length =len( x )
     fpt_array = np.zeros(( traj_length ,), dtype=np.float64)
     tpt_array = np.zeros(( traj_length ,), dtype=np.float64)
     fpt_array_with_recrossings = np.zeros(( traj_length ,), dtype=np.float64)
+    nr_events_with_recrossings = 0
     index = 0
-    x_past = x0
-    for i in range( 1 , traj_length ):
-        x_present = x[i]
-        if x_present != x_start :
-            sign_x_start_after = int(( x_present - x_start)/abs( x_present - x_start ))
-        else:
-            sign_x_start_after = int(0)
-        if x_present != x_final:
-            sign_x_final_after =int(( x_present - x_final)/abs( x_present - x_final))
-        else:
-            sign_x_final_after = int(0)
-        if sign_x_start_after != sign_x_start_before or sign_x_start_after == 0:
-           v = ( x_present - x_past )/dt
-           if v == 0:
-               delta_t = 0
-           else:
-               delta_t = ( x_present - x_start )/ v
+    for i in range( 0 , traj_length ):
+        if xstart_signs [i] != xstart_signs [i+1] :
+            if recrossings == 0:
+                time_step = 0
+            if xstart_signs [i] == 0:
+                aa
+            elif xstart_signs [i+1] == 0:
+                aa
+            else:
+                v = ( x [i+1] - x [i] )/dt
+                delta_t = ( x [i+1] - x_start )/ v
            if recrossings == 0:
                time_step = 0
                fpt -= delta_t
