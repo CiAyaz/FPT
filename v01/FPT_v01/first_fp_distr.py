@@ -178,3 +178,8 @@ def calc_tr(x, dt, xs, xf, T, llauf, t1, t2, nrevents):
         llauf+=1
     times=np.array([T, llauf, t1, t2, nrevents], dtype=np.float64)
     return trarr1, trarr2, times
+
+
+# short example
+data = np.arange(10)
+calc_fpt(data)
