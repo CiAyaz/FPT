@@ -1,7 +1,10 @@
 import numpy as np
-from utils import compute_passage_times
+from tools import compute_passage_times
 
-class rates():
-    '''Main class for computing rates'''
+class FPT():
+    '''Main class for computing passage times distributions'''
     
-    def __init__(self, )
+    def __init__(self, dt):
+        self.dt = dt
+
+
