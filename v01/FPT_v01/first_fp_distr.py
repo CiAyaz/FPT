@@ -2,14 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import math
-import numba
 from numba import njit
 
 @njit()
-def calc_fpt(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal, previous_x = 0., previous_sign_xstart = 0., previous_sign_xfinal = 0., time_step = 0, current_number_recrossings = 0):
+def compute_passage_times(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal, previous_x = 0., previous_sign_xstart = 0., previous_sign_xfinal = 0., time_step = 0, current_number_recrossings = 0):
     """
-    Compute first passage times between configurations xstart and xfinal in time series data  x with time step dt.
+    Compute passage times (first passage times without recrossings, first passage times with recrossings and transition path times) between configurations xstart and xfinal in time series data x with time step dt.
     """
     array_size = len(fpt_array_with_recrossings)
     fpt_array = np.zeros((array_size, ), dtype=np.float64)
@@ -45,7 +43,14 @@ def calc_fpt(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_rec
     float_stats_for_continuation = np.array([previous_x, previous_sign_xstart, previous_sign_xfinal])
     return float_stats_for_continuation, integer_stats_for_continuation, fpt_array, tpt_array, fpt_array_with_recrossings
 
-def comp_tarray(trajectories , dt , xstart_vector , xfinal_vector , array_size):
+def compute_passage_time_arrays(trajectories , dt , xstart_vector , xfinal_vector , array_size):
+    """
+    Computes passage times: first first passage times, all first passage times and transition path times.
+    trajectories: 1d numpy array trajectory or a list of strings with paths to 1d trajectories,
+    dt: time step,
+    xstart_vector and xfinal_vector: 1d arrays with positions to compute the times it takes to go from xstart to xfinal,
+    array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events.
+    """
     fpt_wr_dict = dict()
     fpt_dict = dict()
     tpt_dict = dict()
@@ -65,14 +70,14 @@ def comp_tarray(trajectories , dt , xstart_vector , xfinal_vector , array_size):
                             sign_x_minus_xstart = np.sign(x - xstart)
                             sign_x_minus_xfinal = np.sign(x - xfinal)
                             if index_trajs == 0:
-                                float_stats, integer_stats, fpt_array, tpt_array, fpt_array_with_recrossings = calc_fpt(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal)
+                                float_stats, integer_stats, fpt_array, tpt_array, fpt_array_with_recrossings = compute_passage_times(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal)
                                 previous_x = float_stats[0]
                                 previous_sign_xstart = float_stats[1]
                                 previous_sign_xfinal = float_stats[2]
                                 time_step = integer_stats[0]
                                 current_number_recrossings = integer_stats[1]
                             else:
-                                float_stats, integer_stats, fpt_array, tpt_array, fpt_array_with_recrossings = calc_fpt(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal, previous_x, previous_sign_xstart, previous_sign_xfinal, time_step, current_number_recrossings)
+                                float_stats, integer_stats, fpt_array, tpt_array, fpt_array_with_recrossings = compute_passage_times(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal, previous_x, previous_sign_xstart, previous_sign_xfinal, time_step, current_number_recrossings)
                                 previous_x = float_stats[0]
                                 previous_sign_xstart = float_stats[1]
                                 previous_sign_xfinal = float_stats[2]
@@ -104,7 +109,7 @@ def comp_tarray(trajectories , dt , xstart_vector , xfinal_vector , array_size):
                     else:
                         sign_x_minus_xstart = np.sign( x - xstart )
                         sign_x_minus_xfinal = np.sign( x - xfinal )
-                        float_stats, integer_stats, fpt_array, tpt_array, fpt_array_with_recrossings = calc_fpt( x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal)
+                        float_stats, integer_stats, fpt_array, tpt_array, fpt_array_with_recrossings = compute_passage_times( x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal)
                         previous_x = float_stats[0]
                         previous_sign_xstart = float_stats[1]
                         previous_sign_xfinal = float_stats[2]
@@ -120,65 +125,3 @@ def comp_tarray(trajectories , dt , xstart_vector , xfinal_vector , array_size):
         return fpt_wr_dict, fpt_dict, tpt_dict
     else:
         assert('trajectory must be a list of paths to numpy arrays or a numpy array!')
-
-@njit()
-def calc_tr(x, dt, xs, xf, T, llauf, t1, t2, nrevents):
-    x0=x[0]
-    if x0!=xs:
-        signs=int((x0-xs)/abs(x0-xs))
-    else:
-        signs=int(0)
-    if x0!=xf:
-        signf=int((x0-xf)/abs(x0-xf))
-    else:
-        signf=int(0)
-    length=len(x)
-    trarr1=np.zeros((length,),dtype=np.float64)
-    trarr2=np.zeros((length,),dtype=np.float64)
-    xxx=x0
-    fplauf1=0
-    fplauf2=0
-    for i in range(length):
-        xx=x[i]
-        if xx!=xs:
-            signs_n=int((xx-xs)/abs(xx-xs))
-        else:
-            signs_n=int(0)
-        if xx!=xf:
-            signf_n=int((xx-xf)/abs(xx-xf))
-        else:
-            signf_n=int(0)
-        if signs_n!=signs or signs_n==0:
-            v=(xx-xxx)/dt
-            if v==0:
-                ddt=0
-            else:
-                ddt=(xx-xs)/v
-            if t2!=0:
-                trarr1[fplauf1]=llauf*dt-ddt-T
-                fplauf1+=1
-                t2=0
-                nrevents+=1
-            T=-ddt
-            t1+=1
-            llauf=0
-            signs=signs_n
-        if signf_n!=signf:
-            v=(xx-xxx)/dt
-            if v==0:
-                ddt=0
-            else:
-                ddt=(xx-xf)/v
-            if t1!=0:
-                trarr2[fplauf2]=llauf*dt-ddt-T
-                fplauf2+=1
-                t1=0
-                nrevents+=1
-            T=-ddt
-            t2+=1
-            llauf=0
-            signf=signf_n
-        xxx=xx
-        llauf+=1
-    times=np.array([T, llauf, t1, t2, nrevents], dtype=np.float64)
-    return trarr1, trarr2, times

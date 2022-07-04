@@ -1,6 +1,5 @@
-from utils import calc_fp
-from utils import comp_tarray
-from utils import calc_tr
+import numpy as np
+from passage_times import compute_passage_times
 
 class rates():
     '''Main class for computing rates'''
