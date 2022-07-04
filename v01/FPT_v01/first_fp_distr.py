@@ -7,55 +7,46 @@ import numba
 from numba import njit
 
 @njit()
-def calc_fpt( x , xstart_signs , xfinal_signs , x_start , x_final , dt , time_step = 0 , recrossings = 0 , fpt = 0. , sign_x_start_before = 0 , sign_x_final_before = 0 , x_past = 0. ):
+def calc_fpt( x , dt , sign_x_minus_xstart , sign_x_minus_xfinal , fpt_array_with_recrossings , xstart , xfinal , previous_x = 0 , previous_sign_xstart = 0 , previous_sign_xfinal = 0 , time_step = 0 , current_number_recrossings = 0 ):
     """
-    Compute first passage times between configurations x_start and x_final in time series data  x with time step dt.
+    Compute first passage times between configurations xstart and xfinal in time series data  x with time step dt.
     """
-    traj_length =len( x )
-    fpt_array = np.zeros(( traj_length ,), dtype=np.float64)
-    tpt_array = np.zeros(( traj_length ,), dtype=np.float64)
-    fpt_array_with_recrossings = np.zeros(( traj_length ,), dtype=np.float64)
-    nr_events_with_recrossings = 0
+    array_size = len( fpt_array_with_recrossings )
+    fpt_array = np.zeros(( array_size ,), dtype=np.float64)
+    tpt_array = np.zeros(( array_size ,), dtype=np.float64)
+    total_number_recrossings = current_number_recrossings
     index = 0
+    if previous_sign_xstart == 0 and previous_sign_xfinal == 0:
+        previous_sign_xstart = sign_x_minus_xstart [0]
+        previous_sign_xfinal = sign_x_minus_xfinal [0]
     for i in range( 0 , traj_length ):
-        if xstart_signs [i] != xstart_signs [i+1] :
-            if recrossings == 0:
-                time_step = 0
-            if xstart_signs [i] == 0:
-                aa
-            elif xstart_signs [i+1] == 0:
-                aa
-            else:
-                v = ( x [i+1] - x [i] )/dt
-                delta_t = ( x [i+1] - x_start )/ v
-           if recrossings == 0:
-               time_step = 0
-               fpt -= delta_t
-           fpt_array_with_recrossings [ nr_events_with_recrossings ] = -( time_step * dt - delta_t )
-           nr_events_with_recrossings += 1
-           recrossings += 1
-           sign_x_start_before = sign_x_start_after
-        if sign_x_final_after != sign_x_final_before :
-            if recrossings != 0:
-                v = ( x_present - x_past )/ dt
-                delta_t = ( x_present - x_final )/ v
-                for recross in range( recrossings ):
-                    fpt_array_with_recrossings [ nr_events_with_recrossings - 1 - recross ] += time_step * dt - delta_t
-                tpt_array [ index ] = fpt_array_with_recrossings [ nr_events_with_recrossings - 1 ] 
-                fpt_array [ index ] = time_step * dt - delta_t - fpt
+        if sign_x_minus_xstart [i] != previous_sign_xstart :
+            v = ( x [i] - previous_x )/dt
+            delta_t = ( xstart - previous_x )/ v
+            fpt_array_with_recrossings [ total_number_recrossings ] = -( time_step * dt - delta_t )
+            total_number_recrossings += 1
+            current_number_recrossings += 1
+        if sign_x_minus_xfinal [i] != previous_sign_xfinal :
+            if current_number_recrossings != 0:
+                v = ( x [i] - previous_x )/ dt
+                delta_t = ( xfinal - previous_x )/ v
+                for recross in range( current_number_recrossings ):
+                    fpt_array_with_recrossings [ total_number_recrossings - 1 - recross ] += time_step * dt - delta_t
+                tpt_array [ index ] = fpt_array_with_recrossings [ total_number_recrossings - 1 ] 
+                fpt_array [ index ] = fpt_array_with_recrossings [ total_number_recrossings - current_number_recrossings ]
                 index += 1
-                recrossings = 0
-            sign_x_final_before = sign_x_final_after
-            time_step = 0
-        x_past = x_present
-        time_step += 1
-    fp_first_array = fp_first_array [np.nonzero( fp_first_array )[0]]
-    stats = np.array([ time_step , recrossings , nr_events_no_recrossings , single_prec_corrections , nr_events_with_recrossings ], dtype=np.int64)
-    times = np.array([ mfpT , mfp , mfpT_first , mfp_first ], dtype=np.float64)
-    return stats , times , fp_first_array
+                current_number_recrossings = 0
+                time_step = 0
+        previous_sign_xstart = sign_x_minus_xstart [i]
+        previous_sign_xfinal = sign_x_minus_xfinal [i]
+        previous_x = x [i]
+        if current_number_recrossings != 0:
+            time_step += 1
+    integer_stats_for_continuation = np.array([ time_step , current_number_recrossings , previous_sign_xstart , previous_sign_xfinal ], dtype=np.int64)
+    float_stats_for_continuation = np.array([ previous_x ])
+    return float_stats_for_continuation , interger_stats_for_continuation , fpt_array , tpt_array , fpt_array_with_recrossings
 
-@njit()
-def comp_tarray(x, dt, st_pos_vec, fin_pos_vec, stats_arr, times_arr):
+def comp_tarray(x, dt, st_pos_vec, fin_pos_vec, integer_stats, float_stats):
     fp_first_dict=dict()
     npos_st=len(st_pos_vec)
     npos_fin=len(fin_pos_vec)
@@ -64,7 +55,7 @@ def comp_tarray(x, dt, st_pos_vec, fin_pos_vec, stats_arr, times_arr):
             if st_pos_vec[i]==fin_pos_vec[j]:
                 continue
             else:
-                times=times_arr[i,j]
+                previous_x,=times_arr[i]
                 stats=stats_arr[i,j]
                 stat,time,fp_first_array = calc_fp(x, dt=dt, xs=st_pos_vec[i], xf=fin_pos_vec[j], llauf=stats[0], tlauf=stats[1], nrevents=stats[2], mfpT=times[0], mfp=times[1], mfpT_first=times[2], mfp_first=times[3], corr=stats[3], nr_fp=stats[4])
                 fp_first_dict[i,j]=fp_first_array
