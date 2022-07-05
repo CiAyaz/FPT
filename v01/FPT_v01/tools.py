@@ -5,10 +5,28 @@ import numpy as np
 from numba import njit
 
 @njit()
-def compute_passage_times(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_array_with_recrossings, xstart, xfinal, previous_x = 0., previous_sign_xstart = 0., previous_sign_xfinal = 0., time_step = 0, current_number_recrossings = 0):
+def compute_passage_times(
+    x, 
+    dt,
+    sign_x_minus_xstart,
+    sign_x_minus_xfinal,
+    fpt_array_with_recrossings,
+    xstart,
+    xfinal,
+    float_values_for_continuation,
+    integer_values_for_continuation):
     """
-    Compute passage times (first passage times without recrossings, first passage times with recrossings and transition path times) between configurations xstart and xfinal in time series data x with time step dt.
+    Compute passage times (first passage times without recrossings, 
+    first passage times with recrossings and transition path times) 
+    between configurations xstart and xfinal in time series data x with time step dt.
+    Arguments
+    Returns
     """
+    previous_x = float_values_for_continuation[0]
+    previous_sign_xstart = float_values_for_continuation[1]
+    previous_sign_xfinal = float_values_for_continuation[2]
+    time_step = integer_values_for_continuation[0]
+    current_number_recrossings = integer_values_for_continuation[1]
     array_size = len(fpt_array_with_recrossings)
     fpt_array = np.zeros((array_size, ), dtype=np.float64)
     tpt_array = np.zeros((array_size, ), dtype=np.float64)
@@ -39,6 +57,6 @@ def compute_passage_times(x, dt, sign_x_minus_xstart, sign_x_minus_xfinal, fpt_a
         previous_x = x[i]
         if current_number_recrossings != 0:
             time_step += 1
-    integer_stats_for_continuation = np.array([time_step, current_number_recrossings], dtype=np.int64)
-    float_stats_for_continuation = np.array([previous_x, previous_sign_xstart, previous_sign_xfinal])
-    return float_stats_for_continuation, integer_stats_for_continuation, fpt_array, tpt_array, fpt_array_with_recrossings
+    integer_values_for_continuation = np.array([time_step, current_number_recrossings], dtype=np.int64)
+    float_values_for_continuation = np.array([previous_x, previous_sign_xstart, previous_sign_xfinal])
+    return float_values_for_continuation, integer_values_for_continuation, fpt_array, tpt_array, fpt_array_with_recrossings
