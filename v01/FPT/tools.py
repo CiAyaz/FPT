@@ -42,6 +42,8 @@ def compute_passage_times(
             fpt_array_with_recrossings[total_number_recrossings] = - (time_step * dt - delta_t)
             total_number_recrossings += 1
             current_number_recrossings += 1
+            if current_number_recrossings >= array_size:
+                raise IndexError('number of passage events with recrossings is larger than array_size!')
         if sign_x_minus_xfinal[i] != previous_sign_xfinal and current_number_recrossings != 0:
             v = (x[i] - previous_x) / dt
             delta_t = (xfinal - previous_x) / v
