@@ -1,0 +1,12 @@
+Metadata-Version: 1.1
+Name: FPT
+Version: 0.1
+Summary: Compute FPT for given trajectory.
+Home-page: UNKNOWN
+Author: Cihan Ayaz
+Author-email: UNKNOWN
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
+Requires: numpy (>=1.10.4)
+Requires: numba (>=0.37.0)
