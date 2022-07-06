@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 if __name__ == "__main__":
     # cihan mfpt
-    setup(name='rates',
+    setup(name='FPT',
           packages=find_packages(),
           version="0.1",
           license='MIT',
