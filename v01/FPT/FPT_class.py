@@ -3,7 +3,7 @@ import numpy as np
 from FPT.tools import compute_passage_times
 
 
-class FPT:
+class FPT():
     """Main class for computing passage times distributions.
     Computes passage times: first first passage times, all first passage times and transition path times.
     trajectories: 1d numpy array trajectory or a list of strings with paths to 1d trajectories,
