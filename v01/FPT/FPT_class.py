@@ -1,4 +1,5 @@
 from collections import defaultdict
+from importlib.resources import path
 import numpy as np
 from FPT.tools import compute_passage_times
 
@@ -11,9 +12,11 @@ class FPT():
     xstart_vector and xfinal_vector: 1d arrays with positions to compute the times it takes to go from xstart to xfinal,
     array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events."""
 
-    def __init__(self, dt, array_size=int(1e6)):
+    def __init__(self, dt, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
         self.dt = dt
         self.array_size = array_size
+        self.savefiles = savefiles
+        self.path_for_savefiles = path_for_savefiles
         # this is what we use for continuation of calc
         self._integer_variables = np.array([0, 0], dtype=np.int64)
         self._float_variables = np.zeros(3)
@@ -114,3 +117,8 @@ class FPT():
                     )
                     self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
                     self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
+
+        if self.savefiles:
+            np.save(self.path_for_savefiles+'fpt_dict', self.fpt_dict)
+            np.save(self.path_for_savefiles+'tpt_dict', self.tpt_dict)
+            np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', self.fpt_wr_dict)
