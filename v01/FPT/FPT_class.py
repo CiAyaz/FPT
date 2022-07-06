@@ -1,6 +1,6 @@
 from collections import defaultdict
 import numpy as np
-from FPT_v01.tools import compute_passage_times
+from FPT.tools import compute_passage_times
 
 
 class FPT:
