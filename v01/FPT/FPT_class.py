@@ -3,7 +3,7 @@ import numpy as np
 from FPT_v01.tools import compute_passage_times
 
 
-class FPT():
+class FPT:
     """Main class for computing passage times distributions.
     Computes passage times: first first passage times, all first passage times and transition path times.
     trajectories: 1d numpy array trajectory or a list of strings with paths to 1d trajectories,
@@ -90,17 +90,17 @@ class FPT():
 
     def compute_passage_time_arrays(self, trajectories, xstart_vector, xfinal_vector):
         trajectories, xstart_vector, xfinal_vector = self.parse_input(
-            self, trajectories, xstart_vector, xfinal_vector
+            trajectories, xstart_vector, xfinal_vector
         )
         self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
         for traj in trajectories:
-            x = self.get_data(self, traj)
+            x = self.get_data(traj)
             for index_xstart, xstart in enumerate(xstart_vector):
                 for index_xfinal, xfinal in enumerate(xfinal_vector):
 
-                    self.compute_single_passage_time(self, x, xstart, xfinal)
+                    self.compute_single_passage_time(x, xstart, xfinal)
 
-                    self.check_xfinal_reached(self)
+                    self.check_xfinal_reached()
 
                     self.fpt_wr_dict[index_xstart, index_xfinal] = np.append(
                         self.fpt_wr_dict[index_xstart, index_xfinal],
