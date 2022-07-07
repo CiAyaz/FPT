@@ -119,6 +119,7 @@ class FPT():
                     self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
 
         if self.savefiles:
-            np.save(self.path_for_savefiles+'fpt_dict', self.fpt_dict)
-            np.save(self.path_for_savefiles+'tpt_dict', self.tpt_dict)
-            np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', self.fpt_wr_dict)
+            print("saving output arrays!")
+            np.save(self.path_for_savefiles+'fpt_dict', dict(self.fpt_dict))
+            np.save(self.path_for_savefiles+'tpt_dict', dict(self.tpt_dict))
+            np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', dict(self.fpt_wr_dict))
