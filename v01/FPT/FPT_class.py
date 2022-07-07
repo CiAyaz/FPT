@@ -1,7 +1,7 @@
 from collections import defaultdict
 from importlib.resources import path
 import numpy as np
-from FPT.tools import compute_passage_times
+from FPT.tools import compute_passage_times, find_transition_paths
 
 
 class FPT():
@@ -12,14 +12,18 @@ class FPT():
     xstart_vector and xfinal_vector: 1d arrays with positions to compute the times it takes to go from xstart to xfinal,
     array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events."""
 
-    def __init__(self, dt, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
+    def __init__(self, dt, xstart_vector, xfinal_vector, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
         self.dt = dt
+        self.xstart_vector = xstart_vector
+        self.xfinal_vector = xfinal_vector
         self.array_size = array_size
         self.savefiles = savefiles
         self.path_for_savefiles = path_for_savefiles
         # this is what we use for continuation of calc
-        self._integer_variables = np.array([0, 0], dtype=np.int64)
+        self._integer_variables = np.zeros(2, dtype=np.int64)
         self._float_variables = np.zeros(3)
+        self._integer_variables_TPT = np.zeros(3, dtype=np.int64)
+        self._float_variables_TPT = np.zeros(2)
         # fields for the results
         self.fpt_wr_dict = defaultdict(lambda: np.array([]))
         self.fpt_dict = defaultdict(lambda: np.array([]))
@@ -30,8 +34,9 @@ class FPT():
         self.fpt_array_with_recrossings = None
         self.fpt_array = None
         self.tpt_array = None
+        self.transition_path_indices = None
 
-    def parse_input(self, trajectories, xstart_vector, xfinal_vector):
+    def parse_input(self, trajectories):
         """trajectories can be str or np.ndarray or a list of such.
         xstart_vector and xfinal_vector must a list of numerical values or numpy ndarray."""
         if not isinstance(trajectories, list):
@@ -39,13 +44,13 @@ class FPT():
         if not all([isinstance(traj, (str, np.ndarray)) for traj in trajectories]):
             raise TypeError("All trajectories should be str or numpy array.")
         self.number_of_trajs = len(trajectories)
-        if not isinstance(xstart_vector, (list, np.ndarray)):
-            xstart_vector = [xstart_vector]
-        if not isinstance(xfinal_vector, (list, np.ndarray)):
-            xfinal_vector = [xfinal_vector]
-        self.number_xstarts = len(xstart_vector)
-        self.number_xfinals = len(xfinal_vector)
-        return trajectories, xstart_vector, xfinal_vector
+        if not isinstance(self.xstart_vector, (list, np.ndarray)):
+            self.xstart_vector = [self.xstart_vector]
+        if not isinstance(self.xfinal_vector, (list, np.ndarray)):
+            self.xfinal_vector = [self.xfinal_vector]
+        self.number_xstarts = len(self.xstart_vector)
+        self.number_xfinals = len(self.xfinal_vector)
+        return trajectories, self.xstart_vector, self.xfinal_vector
 
     def check_xfinal_reached(self):
         if self._integer_variables[1] != 0:
@@ -69,6 +74,7 @@ class FPT():
                 self.fpt_array,
                 self.tpt_array,
                 self.fpt_array_with_recrossings,
+                self.transition_path_indices
             ) = compute_passage_times(
                 x,
                 self.dt,
@@ -91,15 +97,15 @@ class FPT():
             return np.load(traj)
         return traj
 
-    def compute_passage_time_arrays(self, trajectories, xstart_vector, xfinal_vector):
-        trajectories, xstart_vector, xfinal_vector = self.parse_input(
-            trajectories, xstart_vector, xfinal_vector
+    def compute_passage_time_arrays(self, trajectories):
+        trajectories, self.xstart_vector, self.xfinal_vector = self.parse_input(
+            trajectories, self.xstart_vector, self.xfinal_vector
         )
         self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
         for traj in trajectories:
             x = self.get_data(traj)
-            for index_xstart, xstart in enumerate(xstart_vector):
-                for index_xfinal, xfinal in enumerate(xfinal_vector):
+            for index_xstart, xstart in enumerate(self.xstart_vector):
+                for index_xfinal, xfinal in enumerate(self.xfinal_vector):
 
                     self.compute_single_passage_time(x, xstart, xfinal)
 
@@ -123,3 +129,59 @@ class FPT():
             np.save(self.path_for_savefiles+'fpt_dict', dict(self.fpt_dict))
             np.save(self.path_for_savefiles+'tpt_dict', dict(self.tpt_dict))
             np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', dict(self.fpt_wr_dict))
+
+    def compute_transition_paths(self, x, xstart, xfinal):
+        if xstart == xfinal:
+            return
+        else:
+            sign_x_minus_xstart = np.sign(x - xstart)
+            sign_x_minus_xfinal = np.sign(x - xfinal)
+            (
+                self._float_variables,
+                self._integer_variables,
+                self.transition_path_indices
+            ) = find_transition_paths(
+                x,
+                sign_x_minus_xstart,
+                sign_x_minus_xfinal,
+                self._float_variables_TPT,
+                self._integer_variables_TPT,
+            )
+        self.fpt_array_with_recrossings = self.fpt_array_with_recrossings[
+            self.fpt_array_with_recrossings != 0.0
+        ]
+        self.fpt_array = self.fpt_array[self.fpt_array != 0.0]
+        self.tpt_array = self.tpt_array[self.tpt_array != 0.0]
+    
+    def concatenate_transition_paths(self):
+
+
+
+    def compute_TPT(self, trajectories):
+        """
+        Compute transition path probability
+        """
+        trajectories, self.xstart_vector, self.xfinal_vector = self.parse_input(
+            trajectories, self.xstart_vector, self.xfinal_vector
+        )
+        for traj in trajectories:
+            x = self.get_data(traj)
+            for index_xstart, xstart in enumerate(self.xstart_vector):
+                for index_xfinal, xfinal in enumerate(self.xfinal_vector):
+
+                    self.find_transition_paths(x, xstart, xfinal)
+
+                    self.check_xfinal_reached()
+
+                    self.fpt_wr_dict[index_xstart, index_xfinal] = np.append(
+                        self.fpt_wr_dict[index_xstart, index_xfinal],
+                        self.fpt_array_with_recrossings,
+                    )
+                    self.fpt_dict[index_xstart, index_xfinal] = np.append(
+                        self.fpt_dict[index_xstart, index_xfinal], self.fpt_array
+                    )
+                    self.tpt_dict[index_xstart, index_xfinal] = np.append(
+                        self.tpt_dict[index_xstart, index_xfinal], self.tpt_array
+                    )
+                    self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
+                    self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
