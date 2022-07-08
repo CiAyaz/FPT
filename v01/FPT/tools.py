@@ -80,9 +80,11 @@ def find_transition_paths(
     """
     transition_path_indices = np.zeros((array_size, 2), dtype=np.int64)
     total_number_recrossings = integer_values_for_continuation[0]
-    current_number_recrossings = integer_values_for_continuation[1]
+    total_number_transitions = integer_values_for_continuation[1]
+    current_number_recrossings = integer_values_for_continuation[2]
     previous_sign_xstart = float_values_for_continuation[1]
     previous_sign_xfinal = float_values_for_continuation[2]
+    starting_index = 0
     index = 0
     if previous_sign_xstart == 0 and previous_sign_xfinal == 0:
         previous_sign_xstart = sign_x_minus_xstart[0]
@@ -93,6 +95,7 @@ def find_transition_paths(
             current_number_recrossings += 1
             total_number_recrossings +=1
         if sign_x_minus_xfinal[i] != previous_sign_xfinal and current_number_recrossings != 0:
+            total_number_transitions +=1
             index += 1
             current_number_recrossings = 0
             ending_index = i
@@ -102,6 +105,6 @@ def find_transition_paths(
     if current_number_recrossings != 0:
         index +=1
         transition_path_indices[index] = np.array([starting_index, 0])
-    integer_values_for_continuation = np.array([total_number_recrossings, current_number_recrossings, starting_index], dtype=np.int64)
+    integer_values_for_continuation = np.array([total_number_recrossings, total_number_transitions, current_number_recrossings], dtype=np.int64)
     float_values_for_continuation = np.array([previous_sign_xstart, previous_sign_xfinal])
     return float_values_for_continuation, integer_values_for_continuation, transition_path_indices

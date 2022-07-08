@@ -1,4 +1,5 @@
 from collections import defaultdict
+from hmac import trans_36
 from importlib.resources import path
 import numpy as np
 from FPT.tools import compute_passage_times, find_transition_paths
@@ -35,6 +36,13 @@ class FPT():
         self.fpt_array = None
         self.tpt_array = None
         self.transition_path_indices = None
+        self.transition_paths = None
+        self.x_dummy = None
+        self.Px = None
+        self.PxTP = None
+        self.PTP = None
+        self.PTPx = None
+        self.Px_edges = None
 
     def parse_input(self, trajectories):
         """trajectories can be str or np.ndarray or a list of such.
@@ -130,15 +138,17 @@ class FPT():
             np.save(self.path_for_savefiles+'tpt_dict', dict(self.tpt_dict))
             np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', dict(self.fpt_wr_dict))
 
-    def compute_transition_paths(self, x, xstart, xfinal):
+    def compute_transition_paths(self, x):
+        xstart = self.xstart_vector[0]
+        xfinal = self.xfinal_vector[-1]
         if xstart == xfinal:
             return
         else:
             sign_x_minus_xstart = np.sign(x - xstart)
             sign_x_minus_xfinal = np.sign(x - xfinal)
             (
-                self._float_variables,
-                self._integer_variables,
+                self._float_variables_TPT,
+                self._integer_variables_TPT,
                 self.transition_path_indices
             ) = find_transition_paths(
                 x,
@@ -153,36 +163,54 @@ class FPT():
         
         
     
-    def concatenate_transition_paths(self):
-        return
+    def concatenate_transition_paths(self, x):
+        if self.transition_path_indices[0,0] == 0 and self.x_dummy != None:
+           self.transition_paths = np.append(self.transition_paths, self.x_dummy)
+        if self.transition_path_indices[-1,1] != 0:
+            for index in range(len(self.transition_path_indices)):
+                start_index = self.transition_path_indices[index, 0]
+                end_index = self.transition_path_indices[index, 1]
+                self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
+        else:
+            for index in range(len(self.transition_path_indices)-1):
+                start_index = self.transition_path_indices[index, 0]
+                end_index = self.transition_path_indices[index, 1]
+                self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
+            self.x_dummy = x[self.transition_path_indices[-1,0]:]
 
 
 
-    def compute_TPT(self, trajectories):
+    def compute_TPT(self, trajectories, nbins=80):
         """
         Compute transition path probability
         """
         trajectories, self.xstart_vector, self.xfinal_vector = self.parse_input(
             trajectories, self.xstart_vector, self.xfinal_vector
         )
+        self.transition_paths = np.array([])
+        self.Px = np.zeros((nbins, ))
         for traj in trajectories:
             x = self.get_data(traj)
-            for index_xstart, xstart in enumerate(self.xstart_vector):
-                for index_xfinal, xfinal in enumerate(self.xfinal_vector):
 
-                    self.find_transition_paths(x, xstart, xfinal)
+            self.compute_transition_paths(x)
 
-                    self.check_xfinal_reached()
+            self.concatenate_transition_paths(x)
 
-                    self.fpt_wr_dict[index_xstart, index_xfinal] = np.append(
-                        self.fpt_wr_dict[index_xstart, index_xfinal],
-                        self.fpt_array_with_recrossings,
-                    )
-                    self.fpt_dict[index_xstart, index_xfinal] = np.append(
-                        self.fpt_dict[index_xstart, index_xfinal], self.fpt_array
-                    )
-                    self.tpt_dict[index_xstart, index_xfinal] = np.append(
-                        self.tpt_dict[index_xstart, index_xfinal], self.tpt_array
-                    )
-                    self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
-                    self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
+            self.Px, self.Px_edges = np.histogram(
+            x,
+            bins = nbins,
+            range = (self.xstart_vector[0], self.xfinal_vector[-1]))
+
+            self.Px += self.Px
+
+
+        self.PxTP, self.Px_edges = np.histogram(
+            self.transition_paths,
+            bins = nbins,
+            range = (self.xstart_vector[0], self.xfinal_vector[-1]))
+
+        self.PTP = self._integer_variables_TPT[1]/self._integer_variables_TPT[0]
+
+        self.PTPx = self.PTP * self.PxTP / self.Px
+
+            
