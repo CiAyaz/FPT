@@ -1,6 +1,7 @@
 from collections import defaultdict
 from hmac import trans_36
 from importlib.resources import path
+from os import XATTR_SIZE_MAX
 import numpy as np
 from FPT.tools import compute_passage_times, find_transition_paths
 
@@ -13,10 +14,11 @@ class FPT():
     xstart_vector and xfinal_vector: 1d arrays with positions to compute the times it takes to go from xstart to xfinal,
     array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events."""
 
-    def __init__(self, dt, xstart_vector, xfinal_vector, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
+    def __init__(self, dt, xstart_vector, xfinal_vector, x_len, x_range = None, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
         self.dt = dt
         self.xstart_vector = xstart_vector
         self.xfinal_vector = xfinal_vector
+        self.x_range = x_range
         self.array_size = array_size
         self.savefiles = savefiles
         self.path_for_savefiles = path_for_savefiles
@@ -43,6 +45,7 @@ class FPT():
         self.PTP = None
         self.PTPx = None
         self.Px_edges = None
+        self.total_trajectory_length = x_len
 
     def parse_input(self, trajectories):
         """trajectories can be str or np.ndarray or a list of such.
@@ -58,7 +61,7 @@ class FPT():
             self.xfinal_vector = [self.xfinal_vector]
         self.number_xstarts = len(self.xstart_vector)
         self.number_xfinals = len(self.xfinal_vector)
-        return trajectories, self.xstart_vector, self.xfinal_vector
+        return trajectories
 
     def check_xfinal_reached(self):
         if self._integer_variables[1] != 0:
@@ -106,9 +109,7 @@ class FPT():
         return traj
 
     def compute_passage_time_arrays(self, trajectories):
-        trajectories, self.xstart_vector, self.xfinal_vector = self.parse_input(
-            trajectories, self.xstart_vector, self.xfinal_vector
-        )
+        trajectories= self.parse_input(trajectories)
         self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
         for traj in trajectories:
             x = self.get_data(traj)
@@ -164,6 +165,8 @@ class FPT():
         
     
     def concatenate_transition_paths(self, x):
+        if len(self.transition_path_indices) == 0:
+            return
         if self.transition_path_indices[0,0] == 0 and self.x_dummy != None:
            self.transition_paths = np.append(self.transition_paths, self.x_dummy)
         if self.transition_path_indices[-1,1] != 0:
@@ -178,20 +181,38 @@ class FPT():
                 self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
             self.x_dummy = x[self.transition_path_indices[-1,0]:]
 
+    def compute_x_range(self, trajectories):
+        print('Computing range in total trajectory')
+        xmax = None
+        xmin = None
+        if not isinstance(trajectories, list):
+            trajectories = self.parse_input(trajectories)
+        for traj in trajectories:
+            x = self.get_data(traj)
+            xmax_test = np.max(x)
+            xmin_test = np.min(x)
+            if xmax == None or xmax < xmax_test:
+                xmax = xmax_test
+            if xmin == None or  xmin > xmin_test:
+                xmin = xmin_test
+        self.x_range = (xmin, xmax)
+        print('Range in total trajectory is ', self.x_range)
+        
 
 
-    def compute_TPT(self, trajectories, nbins=80):
+    def compute_TPT(self, trajectories, nbins=100):
         """
         Compute transition path probability
         """
-        trajectories, self.xstart_vector, self.xfinal_vector = self.parse_input(
-            trajectories, self.xstart_vector, self.xfinal_vector
-        )
+        trajectories = self.parse_input(trajectories)
         self.transition_paths = np.array([])
         self.Px = np.zeros((nbins, ))
+        if self.x_range == None:
+            self.compute_x_range(trajectories)
+        print('Computing PTPx')
         for traj in trajectories:
             x = self.get_data(traj)
-
+            
             self.compute_transition_paths(x)
 
             self.concatenate_transition_paths(x)
@@ -199,18 +220,18 @@ class FPT():
             self.Px, self.Px_edges = np.histogram(
             x,
             bins = nbins,
-            range = (self.xstart_vector[0], self.xfinal_vector[-1]))
+            range = self.x_range)
 
             self.Px += self.Px
 
+        self.Px = self.Px/np.trapz(self.Px, self.Px_edges[:-1])
 
         self.PxTP, self.Px_edges = np.histogram(
             self.transition_paths,
             bins = nbins,
-            range = (self.xstart_vector[0], self.xfinal_vector[-1]))
+            range = self.x_range,
+            density = True)
 
-        self.PTP = self._integer_variables_TPT[1]/self._integer_variables_TPT[0]
+        self.PTP = len(self.transition_paths) / self.total_trajectory_length
 
         self.PTPx = self.PTP * self.PxTP / self.Px
-
-            
