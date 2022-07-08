@@ -65,10 +65,10 @@ def compute_passage_times(
 
 @njit()
 def find_transition_paths(
-    x,
-    transition_path_indices, 
+    x, 
     sign_x_minus_xstart,
     sign_x_minus_xfinal,
+    array_size
     float_values_for_continuation,
     integer_values_for_continuation,
     ):
@@ -79,6 +79,7 @@ def find_transition_paths(
     Arguments
     Returns
     """
+    transition_path_indices = np.zeros((array_size, 2), dtype=np.int64)
     total_number_recrossings = integer_values_for_continuation[0]
     current_number_recrossings = integer_values_for_continuation[1]
     previous_sign_xstart = float_values_for_continuation[1]
@@ -99,6 +100,9 @@ def find_transition_paths(
             transition_path_indices[index] = np.array([starting_index, ending_index])
         previous_sign_xstart = sign_x_minus_xstart[i]
         previous_sign_xfinal = sign_x_minus_xfinal[i]
+    if current_number_recrossings != 0:
+        index +=1
+        transition_path_indices[index] = np.array([starting_index, 0])
     integer_values_for_continuation = np.array([total_number_recrossings, current_number_recrossings, starting_index], dtype=np.int64)
     float_values_for_continuation = np.array([previous_sign_xstart, previous_sign_xfinal])
     return float_values_for_continuation, integer_values_for_continuation, transition_path_indices
