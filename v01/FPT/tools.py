@@ -68,10 +68,9 @@ def find_transition_paths(
     x, 
     sign_x_minus_xstart,
     sign_x_minus_xfinal,
-    array_size
+    array_size,
     float_values_for_continuation,
-    integer_values_for_continuation,
-    ):
+    integer_values_for_continuation):
     """
     Compute passage times (first passage times without recrossings, 
     first passage times with recrossings and transition path times) 

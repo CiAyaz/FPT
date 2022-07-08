@@ -144,16 +144,17 @@ class FPT():
                 x,
                 sign_x_minus_xstart,
                 sign_x_minus_xfinal,
-                self.array_size
+                self.array_size,
                 self._float_variables_TPT,
-                self._integer_variables_TPT,
-            )
+                self._integer_variables_TPT
+                )
         self.transition_path_indices = self.transition_path_indices[
             np.unique(np.nonzero(self.transition_path_indices)[0])]
         
         
     
     def concatenate_transition_paths(self):
+        return
 
 
 
