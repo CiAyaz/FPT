@@ -217,12 +217,12 @@ class FPT():
 
             self.concatenate_transition_paths(x)
 
-            self.Px, self.Px_edges = np.histogram(
+            Px_dummy, self.Px_edges = np.histogram(
             x,
             bins = nbins,
             range = self.x_range)
 
-            self.Px += self.Px
+            self.Px += Px_dummy
 
         self.Px = self.Px/np.trapz(self.Px, self.Px_edges[:-1])
 
