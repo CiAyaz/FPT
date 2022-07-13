@@ -14,7 +14,7 @@ class FPT():
     xstart_vector and xfinal_vector: 1d arrays with positions to compute the times it takes to go from xstart to xfinal,
     array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events."""
 
-    def __init__(self, dt, xstart_vector, xfinal_vector, x_len, x_range = None, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
+    def __init__(self, dt, xstart_vector, xfinal_vector, x_range = None, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
         self.dt = dt
         self.xstart_vector = xstart_vector
         self.xfinal_vector = xfinal_vector
@@ -45,7 +45,7 @@ class FPT():
         self.PTP = None
         self.PTPx = None
         self.Px_edges = None
-        self.total_trajectory_length = x_len
+        self.total_trajectory_length = 0
 
     def parse_input(self, trajectories):
         """trajectories can be str or np.ndarray or a list of such.
@@ -200,7 +200,7 @@ class FPT():
         
 
 
-    def compute_TPT(self, trajectories, nbins=100):
+    def compute_PTPx(self, trajectories, nbins=100):
         """
         Compute transition path probability
         """
@@ -212,7 +212,7 @@ class FPT():
         print('Computing PTPx')
         for traj in trajectories:
             x = self.get_data(traj)
-            
+
             self.compute_transition_paths(x)
 
             self.concatenate_transition_paths(x)
@@ -223,6 +223,7 @@ class FPT():
             range = self.x_range)
 
             self.Px += Px_dummy
+            self.total_trajectory_length += len(x)
 
         self.Px = self.Px/np.trapz(self.Px, self.Px_edges[:-1])
 
