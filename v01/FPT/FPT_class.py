@@ -2,8 +2,9 @@ from collections import defaultdict
 from hmac import trans_36
 from importlib.resources import path
 from os import XATTR_SIZE_MAX
+from matplotlib.pyplot import get
 import numpy as np
-from FPT.tools import compute_passage_times, find_transition_paths
+from FPT.tools import *
 
 
 class FPT():
@@ -14,7 +15,14 @@ class FPT():
     xstart_vector and xfinal_vector: 1d arrays with positions to compute the times it takes to go from xstart to xfinal,
     array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events."""
 
-    def __init__(self, dt, xstart_vector, xfinal_vector, x_range = None, array_size=int(1e6), savefiles=False, path_for_savefiles='./'):
+    def __init__(self, 
+    dt, xstart_vector, 
+    xfinal_vector, 
+    x_range = None, 
+    array_size=int(1e6), 
+    savefiles=False, 
+    path_for_savefiles='./',
+    nbins=500):
         self.dt = dt
         self.xstart_vector = xstart_vector
         self.xfinal_vector = xfinal_vector
@@ -46,6 +54,7 @@ class FPT():
         self.PTPx = None
         self.Px_edges = None
         self.total_trajectory_length = 0
+        self.nbins = nbins
 
     def parse_input(self, trajectories):
         """trajectories can be str or np.ndarray or a list of such.
@@ -62,6 +71,7 @@ class FPT():
         self.number_xstarts = len(self.xstart_vector)
         self.number_xfinals = len(self.xfinal_vector)
         return trajectories
+
 
     def check_xfinal_reached(self):
         if self._integer_variables[1] != 0:
@@ -181,41 +191,60 @@ class FPT():
                 self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
             self.x_dummy = x[self.transition_path_indices[-1,0]:]
 
-    def compute_x_range(self, trajectories):
-        print('Estimating range in total trajectory')
-        xmax = None
-        xmin = None
+    def compute_x_range_and_bw(self, trajectories):
+        print('Estimating range in total trajectory and bandwidth for kde')
         if not isinstance(trajectories, list):
             trajectories = self.parse_input(trajectories)
-        indices = np.random.randint(
-            low=0, 
-            high=len(trajectories) - 1, 
-            size=int(len(trajectories) / 10) + 1)
-        trajs = []
-        for ind in indices:
-            trajs.append(trajectories[ind])
-        for traj in trajs:
-            x = self.get_data(traj)
-            xmax_test = np.max(x)
-            xmin_test = np.min(x)
-            if xmax == None or xmax < xmax_test:
-                xmax = xmax_test
-            if xmin == None or  xmin > xmin_test:
-                xmin = xmin_test
-        self.x_range = (xmin, xmax)
-        print('Range in total trajectory is ', self.x_range)
+        if len(trajectories) > 1:
+            xmax = None
+            xmin = None
+            indices = np.random.randint(
+                low=0, 
+                high=len(trajectories) - 1, 
+                size=int(len(trajectories) / 10) + 1)
+            trajs = []
+            for ind in indices:
+                trajs.append(trajectories[ind])
+            xmean = 0.
+            for traj in trajs:
+                x = self.get_data(traj)
+                xmax_test = np.max(x)
+                xmin_test = np.min(x)
+                if xmax == None or xmax < xmax_test:
+                    xmax = xmax_test
+                if xmin == None or  xmin > xmin_test:
+                    xmin = xmin_test
+                xmean += np.mean(x)
+            xmean /= len(trajs)
+            xvar = 0.
+            for traj in trajs:
+                x = self.get_data(traj)
+                xdiff = (x - xmean) **2 / len(x)
+                xvar += np.sum(xdiff)
+            xvar /= len(trajs)
+
+            self.x_range = (xmin, xmax)
+            self.bw = (len(trajs) * len(x)) **(-1/6) * xvar
+        else:
+            x = self.get_data(trajectories[0])
+            self.x_range = (np.min(x), np.max(x))
+            self.bw = len(x) **(-1/6) * np.var(x)
+        print('estimated range in total trajectory is ', self.x_range)
+        print('estimated bw in total trajectory is ', self.bw)
         
+    def compute_distribution(self, x):
+        p, pos = kde_epanechnikov(x, self.x_range, self.bw, self.nbins)
+        return p, pos
 
-
-    def compute_PTPx(self, trajectories, nbins=100):
+    def compute_PTPx(self, trajectories):
         """
         Compute transition path probability
         """
         trajectories = self.parse_input(trajectories)
         self.transition_paths = np.array([])
-        self.Px = np.zeros((nbins, ))
+        self.Px = np.zeros(self.nbins)
         if self.x_range == None:
-            self.compute_x_range(trajectories)
+            self.compute_x_range_and_bw(trajectories)
         print('Computing PTPx')
         for traj in trajectories:
             x = self.get_data(traj)
@@ -224,27 +253,32 @@ class FPT():
 
             self.concatenate_transition_paths(x)
 
-            Px_dummy, self.Px_edges = np.histogram(
-            x,
-            bins = nbins,
-            range = self.x_range)
+            Px_dummy, self.Px_edges = self.compute_distribution(x)
 
             self.Px += Px_dummy
             self.total_trajectory_length += len(x)
 
-        self.Px = self.Px/np.trapz(self.Px, self.Px_edges[:-1])
+        self.Px = self.Px/np.trapz(self.Px, self.Px_edges)
 
-        self.PxTP, self.Px_edges = np.histogram(
-            self.transition_paths,
-            bins = nbins,
-            range = self.x_range,
-            density = True)
+        print("length of transition paths is ", len(self.transition_paths))
+        self.PxTP, self.Px_edges = self.compute_distribution(self.transition_paths)
+        #np.histogram(
+        #   self.transition_paths,
+        #   bins = self.nbins,
+        #   range = self.x_range,
+        #   density = True)
 
         self.PTP = len(self.transition_paths) / self.total_trajectory_length
 
         self.PTPx = self.PTP * self.PxTP / self.Px
 
         if self.savefiles:
+            self.PTPx = np.concatenate((
+                self.Px_edges.reshape((self.nbins,1)), 
+                self.PTPx.reshape((self.nbins, 1))
+                ), 
+                axis = 1)
+
             print("saving output arrays!")
             np.save(self.path_for_savefiles+'PTP', np.array([self.PTP]))
             np.save(self.path_for_savefiles+'PxTP', self.PxTP)

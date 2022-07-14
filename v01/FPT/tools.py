@@ -108,3 +108,14 @@ def find_transition_paths(
     integer_values_for_continuation = np.array([total_number_recrossings, total_number_transitions, current_number_recrossings], dtype=np.int64)
     float_values_for_continuation = np.array([previous_sign_xstart, previous_sign_xfinal])
     return float_values_for_continuation, integer_values_for_continuation, transition_path_indices
+
+@njit()
+def kde_epanechnikov(x, srange, bw, nrbins=500):
+    p=np.zeros(nrbins)
+    contx=np.linspace(srange[0], srange[1], nrbins)
+    for i in range(len(x)):
+        for j in range(nrbins):    
+            if abs(contx[j] - x[i]) <= bw:
+                p[j] += (1 - ((contx[j] - x[i]) / bw) **2)
+    p /= (len(x) * 4 * bw / 3)
+    return(p, contx)
