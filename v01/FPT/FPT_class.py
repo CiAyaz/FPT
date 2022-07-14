@@ -1,4 +1,5 @@
 from collections import defaultdict
+from gettext import translation
 from hmac import trans_36
 from importlib.resources import path
 from os import XATTR_SIZE_MAX
@@ -55,6 +56,7 @@ class FPT():
         self.Px_edges = None
         self.total_trajectory_length = 0
         self.nbins = nbins
+        self.transition_path_len = 0
 
     def parse_input(self, trajectories):
         """trajectories can be str or np.ndarray or a list of such.
@@ -177,17 +179,20 @@ class FPT():
     def concatenate_transition_paths(self, x):
         if len(self.transition_path_indices) == 0:
             return
-        if self.transition_path_indices[0,0] == 0 and self.x_dummy != None:
+        if self.transition_path_indices[0,0] == 0 and isinstance(self.x_dummy, np.ndarray):
            self.transition_paths = np.append(self.transition_paths, self.x_dummy)
+           self.transition_path_len += len(self.x_dummy)
         if self.transition_path_indices[-1,1] != 0:
             for index in range(len(self.transition_path_indices)):
                 start_index = self.transition_path_indices[index, 0]
                 end_index = self.transition_path_indices[index, 1]
+                self.transition_path_len += (end_index - start_index)
                 self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
         else:
             for index in range(len(self.transition_path_indices)-1):
                 start_index = self.transition_path_indices[index, 0]
                 end_index = self.transition_path_indices[index, 1]
+                self.transition_path_len += (end_index - start_index)
                 self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
             self.x_dummy = x[self.transition_path_indices[-1,0]:]
 
@@ -243,6 +248,7 @@ class FPT():
         trajectories = self.parse_input(trajectories)
         self.transition_paths = np.array([])
         self.Px = np.zeros(self.nbins)
+        self.PxTP = np.zeros(self.nbins)
         if self.x_range == None:
             self.compute_x_range_and_bw(trajectories)
         print('Computing PTPx')
@@ -253,24 +259,30 @@ class FPT():
 
             self.concatenate_transition_paths(x)
 
+            if len(self.transition_paths) != 0:
+                PxTP_dummy, self.Px_edges = self.compute_distribution(self.transition_paths)
+                self.PxTP += PxTP_dummy
+                self.transition_paths = np.array([])
+
             Px_dummy, self.Px_edges = self.compute_distribution(x)
 
             self.Px += Px_dummy
             self.total_trajectory_length += len(x)
 
+        self.PxTP = self.PxTP/np.trapz(self.PxTP, self.Px_edges)
         self.Px = self.Px/np.trapz(self.Px, self.Px_edges)
 
-        print("length of transition paths is ", len(self.transition_paths))
-        self.PxTP, self.Px_edges = self.compute_distribution(self.transition_paths)
+        print("length of transition paths is ", self.transition_path_len)
 
-        self.PTP = len(self.transition_paths) / self.total_trajectory_length
+        self.PTP = self.transition_path_len / self.total_trajectory_length
 
-        self.PTPx = self.PTP * self.PxTP / self.Px
+        self.PTPx = self.PTP * self.PxTP[self.Px != 0] / self.Px[self.Px != 0]
 
         if self.savefiles:
+            nonzero_entries = len(self.Px[self.Px != 0])
             self.PTPx = np.concatenate((
-                self.Px_edges.reshape((self.nbins,1)), 
-                self.PTPx.reshape((self.nbins, 1))
+                self.Px_edges[self.Px != 0].reshape((nonzero_entries,1)), 
+                self.PTPx.reshape((nonzero_entries, 1))
                 ), 
                 axis = 1)
 
