@@ -182,12 +182,19 @@ class FPT():
             self.x_dummy = x[self.transition_path_indices[-1,0]:]
 
     def compute_x_range(self, trajectories):
-        print('Computing range in total trajectory')
+        print('Estimating range in total trajectory')
         xmax = None
         xmin = None
         if not isinstance(trajectories, list):
             trajectories = self.parse_input(trajectories)
-        for traj in trajectories:
+        indices = np.random.randint(
+            low=0, 
+            high=len(trajectories) - 1, 
+            size=int(len(trajectories) / 10) + 1)
+        trajs = []
+        for ind in indices:
+            trajs.append(trajectories[ind])
+        for traj in trajs:
             x = self.get_data(traj)
             xmax_test = np.max(x)
             xmin_test = np.min(x)
