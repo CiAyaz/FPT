@@ -262,11 +262,6 @@ class FPT():
 
         print("length of transition paths is ", len(self.transition_paths))
         self.PxTP, self.Px_edges = self.compute_distribution(self.transition_paths)
-        #np.histogram(
-        #   self.transition_paths,
-        #   bins = self.nbins,
-        #   range = self.x_range,
-        #   density = True)
 
         self.PTP = len(self.transition_paths) / self.total_trajectory_length
 
