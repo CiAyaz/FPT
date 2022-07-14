@@ -236,3 +236,10 @@ class FPT():
         self.PTP = len(self.transition_paths) / self.total_trajectory_length
 
         self.PTPx = self.PTP * self.PxTP / self.Px
+
+        if self.savefiles:
+            print("saving output arrays!")
+            np.save(self.path_for_savefiles+'PTP', np.array([self.PTP]))
+            np.save(self.path_for_savefiles+'PxTP', self.PxTP)
+            np.save(self.path_for_savefiles+'Px', self.Px)
+            np.save(self.path_for_savefiles+'PTPx', self.PTPx)
