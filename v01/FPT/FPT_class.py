@@ -241,6 +241,17 @@ class FPT():
         p, pos = kde_epanechnikov(x, self.x_range, self.bw, self.nbins)
         return p, pos
 
+    def write_info_file(self):
+        with open(self.path_for_savefiles+'info.txt', 'a') as f:
+                f.write('estimated range in total trajectory is (%.4g, %.4g)'%(self.x_range[0],self.x_range[1]))
+                f.write('\n')
+                f.write('estimated bw in total trajectory is %.4g'%self.bw)
+                f.write('\n')
+                f.write('length of transition paths is %d'%self.transition_path_len)
+                f.write('\n')
+                f.write('total number of transitions is %d'%self._integer_variables_TPT[1])
+
+
     def compute_PTPx(self, trajectories):
         """
         Compute transition path probability
@@ -251,6 +262,7 @@ class FPT():
         self.PxTP = np.zeros(self.nbins)
         if self.x_range == None:
             self.compute_x_range_and_bw(trajectories)
+
         print('Computing PTPx')
         for traj in trajectories:
             x = self.get_data(traj)
@@ -291,3 +303,5 @@ class FPT():
             np.save(self.path_for_savefiles+'PxTP', self.PxTP)
             np.save(self.path_for_savefiles+'Px', self.Px)
             np.save(self.path_for_savefiles+'PTPx', self.PTPx)
+
+            self.write_info_file()
