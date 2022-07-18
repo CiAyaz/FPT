@@ -60,6 +60,8 @@ class FPT():
         self.total_trajectory_length = 0
         self.nbins = nbins
         self.transition_path_len = 0
+        self.time_distr_nbins = 100
+        self.comp_time_distr = True
 
     def parse_input(self):
         """trajectories can be str or np.ndarray or a list of such.
@@ -98,8 +100,7 @@ class FPT():
                 self._integer_variables,
                 self.fpt_array,
                 self.tpt_array,
-                self.fpt_array_with_recrossings,
-                self.transition_path_indices
+                self.fpt_array_with_recrossings
             ) = compute_passage_times(
                 x,
                 self.dt,
@@ -122,9 +123,31 @@ class FPT():
             return np.load(traj)
         return traj
 
+    def compute_time_distributions(self):
+        self.fpt_distr = dict()
+        self.tpt_distr = dict()
+        self.fpt_wr_distr = dict()
+        output_dictionaries = [self.fpt_distr, self.tpt_distr, self.fpt_wr_distr]
+        input_dictionaries = [self.fpt_dict, self.tpt_dict, self.fpt_wr_dict]
+        for dict_out, dict_in in zip(output_dictionaries, input_dictionaries):
+            for key in dict_in.keys():
+                dict_length = len(dict_in[key])
+                if dict_length == 0:
+                    dict_out[key] = np.array([])
+                elif dict_length == 1:
+                    dict_out[key] = np.array([dict_in[key][0], 1.])
+                else:
+                    key_range = (dict_in[key].min(), dict_in[key].max())
+                    key_bw = 1.06 * dict_length ** (-1/5) * np.std(dict_in[key])
+                    p, pos = kde_epanechnikov(dict_in[key], key_range, key_bw, 
+                        self.time_distr_nbins, norm=dict_length)
+                    dict_out[key] = np.concatenate((pos[:,None], p[:,None]), axis=1)
+                    
+
     def compute_passage_time_arrays(self):
         self.parse_input()
         self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
+        print('computing times array')
         for traj in self.trajectories:
             x = self.get_data(traj)
             for index_xstart, xstart in enumerate(self.xstart_vector):
@@ -147,11 +170,18 @@ class FPT():
                     self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
                     self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
 
+        if self.comp_time_distr:
+            print('computing times distributions')
+            self.compute_time_distributions()
+
         if self.savefiles:
             print("saving output arrays!")
             np.save(self.path_for_savefiles+'fpt_dict', dict(self.fpt_dict))
             np.save(self.path_for_savefiles+'tpt_dict', dict(self.tpt_dict))
             np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', dict(self.fpt_wr_dict))
+            np.save(self.path_for_savefiles+'fpt_distr', self.fpt_distr)
+            np.save(self.path_for_savefiles+'tpt_distr', self.tpt_distr)
+            np.save(self.path_for_savefiles+'fpt_with_recrossings_distr', self.fpt_wr_distr)
 
     def compute_transition_paths(self, x):
         xstart = self.xstart_vector[0]
@@ -175,8 +205,7 @@ class FPT():
                 )
         self.transition_path_indices = self.transition_path_indices[
             np.unique(np.nonzero(self.transition_path_indices)[0])]
-        
-        
+           
     
     def concatenate_transition_paths(self, x):
         if len(self.transition_path_indices) == 0:
@@ -231,11 +260,11 @@ class FPT():
             xvar /= len(trajs)
 
             self.x_range = (xmin, xmax)
-            self.bw = (len(trajs) * len(x)) **(-1/6) * xvar
+            self.bw = 1.06 * (len(trajs) * len(x)) **(-1/5) * np.sqrt(xvar)
         else:
             x = self.get_data(self.trajectories[0])
             self.x_range = (np.min(x), np.max(x))
-            self.bw = len(x) **(-1/6) * np.var(x)
+            self.bw = 1.06 * len(x) **(-1/5) * np.std(x)
         print('estimated range in total trajectory is ', self.x_range)
         print('estimated bw in total trajectory is ', self.bw)
         
