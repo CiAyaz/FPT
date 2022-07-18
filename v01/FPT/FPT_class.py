@@ -17,13 +17,16 @@ class FPT():
     array_size: the size of the passage times arrays. As an estimate, use expected maximum number of passage events."""
 
     def __init__(self, 
-    dt, xstart_vector, 
+    trajectories,
+    dt, 
+    xstart_vector, 
     xfinal_vector, 
     x_range = None, 
     array_size=int(1e6), 
     savefiles=False, 
     path_for_savefiles='./',
     nbins=500):
+        self.trajectories = trajectories
         self.dt = dt
         self.xstart_vector = xstart_vector
         self.xfinal_vector = xfinal_vector
@@ -58,21 +61,20 @@ class FPT():
         self.nbins = nbins
         self.transition_path_len = 0
 
-    def parse_input(self, trajectories):
+    def parse_input(self):
         """trajectories can be str or np.ndarray or a list of such.
         xstart_vector and xfinal_vector must a list of numerical values or numpy ndarray."""
-        if not isinstance(trajectories, list):
-            trajectories = [trajectories]
-        if not all([isinstance(traj, (str, np.ndarray)) for traj in trajectories]):
+        if not isinstance(self.trajectories, list):
+            self.trajectories = [self.trajectories]
+        if not all([isinstance(traj, (str, np.ndarray)) for traj in self.trajectories]):
             raise TypeError("All trajectories should be str or numpy array.")
-        self.number_of_trajs = len(trajectories)
+        self.number_of_trajs = len(self.trajectories)
         if not isinstance(self.xstart_vector, (list, np.ndarray)):
             self.xstart_vector = [self.xstart_vector]
         if not isinstance(self.xfinal_vector, (list, np.ndarray)):
             self.xfinal_vector = [self.xfinal_vector]
         self.number_xstarts = len(self.xstart_vector)
         self.number_xfinals = len(self.xfinal_vector)
-        return trajectories
 
 
     def check_xfinal_reached(self):
@@ -120,10 +122,10 @@ class FPT():
             return np.load(traj)
         return traj
 
-    def compute_passage_time_arrays(self, trajectories):
-        trajectories= self.parse_input(trajectories)
+    def compute_passage_time_arrays(self):
+        self.parse_input()
         self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
-        for traj in trajectories:
+        for traj in self.trajectories:
             x = self.get_data(traj)
             for index_xstart, xstart in enumerate(self.xstart_vector):
                 for index_xfinal, xfinal in enumerate(self.xfinal_vector):
@@ -196,20 +198,20 @@ class FPT():
                 self.transition_paths = np.append(self.transition_paths, x[start_index: end_index+1])
             self.x_dummy = x[self.transition_path_indices[-1,0]:]
 
-    def compute_x_range_and_bw(self, trajectories):
+    def compute_x_range_and_bw(self):
         print('Estimating range in total trajectory and bandwidth for kde')
-        if not isinstance(trajectories, list):
-            trajectories = self.parse_input(trajectories)
-        if len(trajectories) > 1:
+        if not isinstance(self.trajectories, list):
+            self.parse_input()
+        if len(self.trajectories) > 1:
             xmax = None
             xmin = None
             indices = np.random.randint(
                 low=0, 
-                high=len(trajectories) - 1, 
-                size=int(len(trajectories) / 10) + 1)
+                high=len(self.trajectories) - 1, 
+                size=int(len(self.trajectories) / 10) + 1)
             trajs = []
             for ind in indices:
-                trajs.append(trajectories[ind])
+                trajs.append(self.trajectories[ind])
             xmean = 0.
             for traj in trajs:
                 x = self.get_data(traj)
@@ -231,7 +233,7 @@ class FPT():
             self.x_range = (xmin, xmax)
             self.bw = (len(trajs) * len(x)) **(-1/6) * xvar
         else:
-            x = self.get_data(trajectories[0])
+            x = self.get_data(self.trajectories[0])
             self.x_range = (np.min(x), np.max(x))
             self.bw = len(x) **(-1/6) * np.var(x)
         print('estimated range in total trajectory is ', self.x_range)
@@ -252,19 +254,19 @@ class FPT():
                 f.write('total number of transitions is %d'%self._integer_variables_TPT[1])
 
 
-    def compute_PTPx(self, trajectories):
+    def compute_PTPx(self):
         """
         Compute transition path probability
         """
-        trajectories = self.parse_input(trajectories)
+        self.parse_input()
         self.transition_paths = np.array([])
         self.Px = np.zeros(self.nbins)
         self.PxTP = np.zeros(self.nbins)
         if self.x_range == None:
-            self.compute_x_range_and_bw(trajectories)
+            self.compute_x_range_and_bw()
 
         print('Computing PTPx')
-        for traj in trajectories:
+        for traj in self.trajectories:
             x = self.get_data(traj)
 
             self.compute_transition_paths(x)
