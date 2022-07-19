@@ -25,6 +25,7 @@ class FPT():
     array_size=int(1e6), 
     savefiles=False, 
     path_for_savefiles='./',
+    file_name='',
     nbins=500):
         self.trajectories = trajectories
         self.dt = dt
@@ -34,6 +35,7 @@ class FPT():
         self.array_size = array_size
         self.savefiles = savefiles
         self.path_for_savefiles = path_for_savefiles
+        self.file_name = file_name
         # this is what we use for continuation of calc
         self._integer_variables = np.zeros(2, dtype=np.int64)
         self._float_variables = np.zeros(3)
@@ -77,6 +79,11 @@ class FPT():
             self.xfinal_vector = [self.xfinal_vector]
         self.number_xstarts = len(self.xstart_vector)
         self.number_xfinals = len(self.xfinal_vector)
+        if self.file_name =='':
+            pass
+        else:
+            if not self.file_name[0] == '_':
+                self.file_name = '_' + self.file_name
 
 
     def check_xfinal_reached(self):
@@ -176,12 +183,12 @@ class FPT():
 
         if self.savefiles:
             print("saving output arrays!")
-            np.save(self.path_for_savefiles+'fpt_dict', dict(self.fpt_dict))
-            np.save(self.path_for_savefiles+'tpt_dict', dict(self.tpt_dict))
-            np.save(self.path_for_savefiles+'fpt_with_recrossings_dict', dict(self.fpt_wr_dict))
-            np.save(self.path_for_savefiles+'fpt_distr', self.fpt_distr)
-            np.save(self.path_for_savefiles+'tpt_distr', self.tpt_distr)
-            np.save(self.path_for_savefiles+'fpt_with_recrossings_distr', self.fpt_wr_distr)
+            np.save(self.path_for_savefiles+'fpt_dict'+self.file_name, dict(self.fpt_dict))
+            np.save(self.path_for_savefiles+'tpt_dict'+self.file_name, dict(self.tpt_dict))
+            np.save(self.path_for_savefiles+'fpt_with_recrossings_dict'+self.file_name, dict(self.fpt_wr_dict))
+            np.save(self.path_for_savefiles+'fpt_distr'+self.file_name, self.fpt_distr)
+            np.save(self.path_for_savefiles+'tpt_distr'+self.file_name, self.tpt_distr)
+            np.save(self.path_for_savefiles+'fpt_with_recrossings_distr'+self.file_name, self.fpt_wr_distr)
 
     def compute_transition_paths(self, x):
         xstart = self.xstart_vector[0]
@@ -330,9 +337,9 @@ class FPT():
                 axis = 1)
 
             print("saving output arrays!")
-            np.save(self.path_for_savefiles+'PTP', np.array([self.PTP]))
-            np.save(self.path_for_savefiles+'PxTP', self.PxTP)
-            np.save(self.path_for_savefiles+'Px', self.Px)
-            np.save(self.path_for_savefiles+'PTPx', self.PTPx)
+            np.save(self.path_for_savefiles+'PTP'+self.file_name, np.array([self.PTP]))
+            np.save(self.path_for_savefiles+'PxTP'+self.file_name, self.PxTP)
+            np.save(self.path_for_savefiles+'Px'+self.file_name, self.Px)
+            np.save(self.path_for_savefiles+'PTPx'+self.file_name, self.PTPx)
 
             self.write_info_file()
