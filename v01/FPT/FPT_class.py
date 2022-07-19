@@ -97,28 +97,26 @@ class FPT():
             self.fpt_dummy = np.zeros(1)
 
     def compute_single_passage_time(self, x, xstart, xfinal):
-        if xstart == xfinal:
-            return
-        else:
-            sign_x_minus_xstart = np.sign(x - xstart)
-            sign_x_minus_xfinal = np.sign(x - xfinal)
-            (
-                self._float_variables,
-                self._integer_variables,
-                self.fpt_array,
-                self.tpt_array,
-                self.fpt_array_with_recrossings
-            ) = compute_passage_times(
-                x,
-                self.dt,
-                sign_x_minus_xstart,
-                sign_x_minus_xfinal,
-                self.fpt_array_with_recrossings,
-                xstart,
-                xfinal,
-                self._float_variables,
-                self._integer_variables,
-            )
+
+        sign_x_minus_xstart = np.sign(x - xstart)
+        sign_x_minus_xfinal = np.sign(x - xfinal)
+        (
+            self._float_variables,
+            self._integer_variables,
+            self.fpt_array,
+            self.tpt_array,
+            self.fpt_array_with_recrossings
+        ) = compute_passage_times(
+            x,
+            self.dt,
+            sign_x_minus_xstart,
+            sign_x_minus_xfinal,
+            self.fpt_array_with_recrossings,
+            xstart,
+            xfinal,
+            self._float_variables,
+            self._integer_variables,
+        )
         self.fpt_array_with_recrossings = self.fpt_array_with_recrossings[
             self.fpt_array_with_recrossings != 0.0
         ]
@@ -159,23 +157,25 @@ class FPT():
             x = self.get_data(traj)
             for index_xstart, xstart in enumerate(self.xstart_vector):
                 for index_xfinal, xfinal in enumerate(self.xfinal_vector):
+                    if xstart == xfinal:
+                        continue
+                    else:
+                        self.compute_single_passage_time(x, xstart, xfinal)
 
-                    self.compute_single_passage_time(x, xstart, xfinal)
+                        self.check_xfinal_reached()
 
-                    self.check_xfinal_reached()
-
-                    self.fpt_wr_dict[index_xstart, index_xfinal] = np.append(
-                        self.fpt_wr_dict[index_xstart, index_xfinal],
-                        self.fpt_array_with_recrossings,
-                    )
-                    self.fpt_dict[index_xstart, index_xfinal] = np.append(
-                        self.fpt_dict[index_xstart, index_xfinal], self.fpt_array
-                    )
-                    self.tpt_dict[index_xstart, index_xfinal] = np.append(
-                        self.tpt_dict[index_xstart, index_xfinal], self.tpt_array
-                    )
-                    self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
-                    self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
+                        self.fpt_wr_dict[index_xstart, index_xfinal] = np.append(
+                            self.fpt_wr_dict[index_xstart, index_xfinal],
+                            self.fpt_array_with_recrossings,
+                        )
+                        self.fpt_dict[index_xstart, index_xfinal] = np.append(
+                            self.fpt_dict[index_xstart, index_xfinal], self.fpt_array
+                        )
+                        self.tpt_dict[index_xstart, index_xfinal] = np.append(
+                            self.tpt_dict[index_xstart, index_xfinal], self.tpt_array
+                        )
+                        self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
+                        self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
 
         if self.comp_time_distr:
             print('computing times distributions')
@@ -190,7 +190,7 @@ class FPT():
             np.save(self.path_for_savefiles+'tpt_distr'+self.file_name, self.tpt_distr)
             np.save(self.path_for_savefiles+'fpt_with_recrossings_distr'+self.file_name, self.fpt_wr_distr)
 
-    def compute_transition_paths(self, x):
+    def compute_transition_paths(self, x, xstart, xfinal):
         xstart = self.xstart_vector[0]
         xfinal = self.xfinal_vector[-1]
         if xstart == xfinal:
