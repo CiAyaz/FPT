@@ -190,7 +190,7 @@ class FPT():
             np.save(self.path_for_savefiles+'tpt_distr'+self.file_name, self.tpt_distr)
             np.save(self.path_for_savefiles+'fpt_with_recrossings_distr'+self.file_name, self.fpt_wr_distr)
 
-    def compute_transition_paths(self, x, xstart, xfinal):
+    def compute_transition_paths(self, x):
         xstart = self.xstart_vector[0]
         xfinal = self.xfinal_vector[-1]
         if xstart == xfinal:
