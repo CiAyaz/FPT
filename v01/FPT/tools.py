@@ -110,12 +110,12 @@ def find_transition_paths(
     return float_values_for_continuation, integer_values_for_continuation, transition_path_indices
 
 @njit()
-def kde_epanechnikov(x, srange, bw, nrbins=500, norm=1e6):
+def kde_epanechnikov(x, edges, bw, norm=1e6):
+    nrbins=len(edges)
     p=np.zeros(nrbins)
-    contx=np.linspace(srange[0], srange[1], nrbins)
     for i in range(len(x)):
         for j in range(nrbins):    
-            if abs(contx[j] - x[i]) <= bw:
-                p[j] += (1 - ((contx[j] - x[i]) / bw) **2)
+            if abs(edges[j] - x[i]) <= bw:
+                p[j] += (1 - ((edges[j] - x[i]) / bw) **2)
     p /= (norm * 4 * bw / 3)
-    return(p, contx)
+    return p

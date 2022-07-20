@@ -26,7 +26,7 @@ class FPT():
     savefiles=False, 
     path_for_savefiles='./',
     file_name='',
-    nbins=500):
+    nbins=100):
         self.trajectories = trajectories
         self.dt = dt
         self.xstart_vector = xstart_vector
@@ -274,10 +274,35 @@ class FPT():
             self.bw = 1.06 * len(x) **(-1/5) * np.std(x)
         print('estimated range in total trajectory is ', self.x_range)
         print('estimated bw in total trajectory is ', self.bw)
+
+    def comp_edges(self):
+        xstart = self.xstart_vector[0]
+        xfinal = self.xfinal_vector[0]
+        x_left = min(xstart, xfinal)
+        x_right = max(xstart, xfinal)
+
+        self.PxTP_edges = np.linspace(x_left, x_right, self.nbins)
+        self.Px_edges = np.linspace(x_left, x_right, self.nbins)
+        width = self.Px_edges[1]-self.Px_edges[0]
+
+        x_left -= width
+        while x_left > self.x_range[0]:
+            self.Px_edges = np.append(self.Px_edges[::-1], x_left)[::-1]
+            x_left -= width
+        x_right += width
+        while x_right < self.x_range[1]:
+            self.Px_edges = np.append(self.Px_edges, x_right)
+            x_right += width
+        self.nbins_Px = len(self.Px_edges)
+
         
-    def compute_distribution(self, x):
-        p, pos = kde_epanechnikov(x, self.x_range, self.bw, self.nbins)
-        return p, pos
+    def compute_Px(self, x):
+        p = kde_epanechnikov(x, self.Px_edges, self.bw)
+        return p
+
+    def compute_PxTP(self, x):
+        p = kde_epanechnikov(x, self.PxTP_edges, self.bw)
+        return p
 
     def write_info_file(self):
         with open(self.path_for_savefiles+'info.txt', 'a') as f:
@@ -296,10 +321,11 @@ class FPT():
         """
         self.parse_input()
         self.transition_paths = np.array([])
-        self.Px = np.zeros(self.nbins)
         self.PxTP = np.zeros(self.nbins)
         if self.x_range == None:
             self.compute_x_range_and_bw()
+        self.comp_edges()
+        self.Px = np.zeros(self.nbins_Px)
 
         print('Computing PTPx')
         for traj in self.trajectories:
@@ -310,30 +336,32 @@ class FPT():
             self.concatenate_transition_paths(x)
 
             if len(self.transition_paths) != 0:
-                PxTP_dummy, self.Px_edges = self.compute_distribution(self.transition_paths)
+                PxTP_dummy = self.compute_PxTP(self.transition_paths)
                 self.PxTP += PxTP_dummy
                 self.transition_paths = np.array([])
 
-            Px_dummy, self.Px_edges = self.compute_distribution(x)
+            Px_dummy = self.compute_Px(x)
 
             self.Px += Px_dummy
             self.total_trajectory_length += len(x)
 
-        self.PxTP = self.PxTP/np.trapz(self.PxTP, self.Px_edges)
+        self.PxTP = self.PxTP/np.trapz(self.PxTP, self.PxTP_edges)
         self.Px = self.Px/np.trapz(self.Px, self.Px_edges)
 
         print("length of transition paths is ", self.transition_path_len)
 
         self.PTP = self.transition_path_len / self.total_trajectory_length
 
-        self.PTPx = self.PTP * self.PxTP[self.Px != 0] / self.Px[self.Px != 0]
+        inds = np.where(np.logical_and(
+            self.Px_edges - self.PxTP_edges[0] >= 0,
+            self.Px_edges - self.PxTP_edges[-1] <= 0
+            ))[0]
+        self.PTPx = self.PTP * self.PxTP / self.Px[inds]
 
         if self.savefiles:
-            nonzero_entries = len(self.Px[self.Px != 0])
             self.PTPx = np.concatenate((
-                self.Px_edges[self.Px != 0].reshape((nonzero_entries,1)), 
-                self.PTPx.reshape((nonzero_entries, 1))
-                ), 
+                self.PxTP_edges[:, None], 
+                self.PTPx[:, None]), 
                 axis = 1)
 
             print("saving output arrays!")
