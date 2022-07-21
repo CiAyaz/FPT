@@ -142,11 +142,10 @@ class FPT():
                 elif dict_length == 1:
                     dict_out[key] = np.array([dict_in[key][0], 1.])
                 else:
-                    key_range = (dict_in[key].min(), dict_in[key].max())
+                    key_edges = np.linspace(dict_in[key].min(), dict_in[key].max(), self.time_distr_nbins)
                     key_bw = 1.06 * dict_length ** (-1/5) * np.std(dict_in[key])
-                    p, pos = kde_epanechnikov(dict_in[key], key_range, key_bw, 
-                        self.time_distr_nbins, norm=dict_length)
-                    dict_out[key] = np.concatenate((pos[:,None], p[:,None]), axis=1)
+                    p = kde_epanechnikov(dict_in[key], key_edges, key_bw, norm=dict_length)
+                    dict_out[key] = np.concatenate((key_edges[:,None], p[:,None]), axis=1)
                     
 
     def compute_passage_time_arrays(self):
