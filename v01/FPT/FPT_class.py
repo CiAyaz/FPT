@@ -94,7 +94,7 @@ class FPT():
                 : nonzero_length - self._integer_variables[1]
             ]
         else:
-            self.fpt_dummy = np.zeros(1)
+            self.fpt_dummy = np.array([])
 
     def compute_single_passage_time(self, x, xstart, xfinal):
 
@@ -117,11 +117,9 @@ class FPT():
             self._float_variables,
             self._integer_variables,
         )
-        self.fpt_array_with_recrossings = self.fpt_array_with_recrossings[
-            self.fpt_array_with_recrossings != 0.0
-        ]
-        self.fpt_array = self.fpt_array[self.fpt_array != 0.0]
-        self.tpt_array = self.tpt_array[self.tpt_array != 0.0]
+        self.fpt_array_with_recrossings = np.trim_zeros(self.fpt_array_with_recrossings, "b")
+        self.fpt_array = np.trim_zeros(self.fpt_array, "b")
+        self.tpt_array = np.trim_zeros(self.tpt_array, "b")
 
     def get_data(self, traj):
         if isinstance(traj, str):
