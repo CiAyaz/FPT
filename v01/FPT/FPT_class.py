@@ -163,15 +163,15 @@ class FPT():
 
                         self.check_xfinal_reached()
 
-                        self.fpt_wr_dict[index_xstart, index_xfinal] = np.append(
-                            self.fpt_wr_dict[index_xstart, index_xfinal],
+                        self.fpt_wr_dict[f"{xstart:.2f}_{xfinal:.2f}"] = np.append(
+                            self.fpt_wr_dict[f"{xstart:.2f}_{xfinal:.2f}"],
                             self.fpt_array_with_recrossings,
                         )
-                        self.fpt_dict[index_xstart, index_xfinal] = np.append(
-                            self.fpt_dict[index_xstart, index_xfinal], self.fpt_array
+                        self.fpt_dict[f"{xstart:.2f}_{xfinal:.2f}"] = np.append(
+                            self.fpt_dict[f"{xstart:.2f}_{xfinal:.2f}"], self.fpt_array
                         )
-                        self.tpt_dict[index_xstart, index_xfinal] = np.append(
-                            self.tpt_dict[index_xstart, index_xfinal], self.tpt_array
+                        self.tpt_dict[f"{xstart:.2f}_{xfinal:.2f}"] = np.append(
+                            self.tpt_dict[f"{xstart:.2f}_{xfinal:.2f}"], self.tpt_array
                         )
                         self.fpt_array_with_recrossings = np.zeros((self.array_size,), dtype=np.float64)
                         self.fpt_array_with_recrossings[: self._integer_variables[1]] = self.fpt_dummy
