@@ -38,7 +38,7 @@ class FPT():
         self.file_name = file_name
         # this is what we use for continuation of calc
         self._integer_variables = np.zeros(2, dtype=np.int64)
-        self._float_variables = np.zeros(3)
+        self._float_variables = np.zeros(4)
         self._integer_variables_TPT = np.zeros(3, dtype=np.int64)
         self._float_variables_TPT = np.zeros(2)
         # fields for the results
@@ -118,6 +118,8 @@ class FPT():
             self._integer_variables,
         )
         self.fpt_array_with_recrossings = np.trim_zeros(self.fpt_array_with_recrossings, "b")
+        if self._float_variables[-1] == 0.:
+            self.fpt_array_with_recrossings = np.append(self.fpt_array_with_recrossings, 0.)
         self.fpt_array = np.trim_zeros(self.fpt_array, "b")
         self.tpt_array = np.trim_zeros(self.tpt_array, "b")
 
